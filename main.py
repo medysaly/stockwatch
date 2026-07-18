@@ -2,8 +2,24 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 import time
 import json
+import yfinance as yf
 
 load_dotenv()
+
+
+def get_stock_data(ticker: str) -> str:
+    stock = yf.Ticker(ticker)
+    history = stock.history(period="5d")
+
+    latest_close = history["Close"].iloc[-1]
+    previous_close = history["Close"].iloc[-2]
+    percent_change = ((latest_close - previous_close) / previous_close) * 100
+
+    news_items = stock.news[:3]
+    headlines = [item["content"]["title"] for item in news_items]
+    news_text = "\n".join(headlines)
+
+    return f"{ticker} closed at {latest_close:.2f}, a {percent_change:.2f}% change from the previous close.\n\nRecent headlines:\n{news_text}"
 
 
 def summarize_market(prompt: str, model: str = "claude-sonnet-5") -> str:
@@ -39,4 +55,4 @@ def summarize_market(prompt: str, model: str = "claude-sonnet-5") -> str:
 
 
 if __name__ == "__main__":
-    print(summarize_market("Apple stock rose 3% today after strong iPhone sales."))
+    print(summarize_market(get_stock_data("AAPL")))
