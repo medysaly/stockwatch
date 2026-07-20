@@ -8,6 +8,7 @@ load_dotenv()
 
 
 def get_stock_data(ticker: str) -> str:
+    """Fetches recent price movement and news for a ticker, formatted for the summarizer prompt."""
     stock = yf.Ticker(ticker)
     history = stock.history(period="5d")
 
@@ -16,6 +17,7 @@ def get_stock_data(ticker: str) -> str:
     percent_change = ((latest_close - previous_close) / previous_close) * 100
 
     news_items = stock.news[:3]
+    # yfinance nests headline data under "content" — undocumented, found by inspecting a raw response.
     headlines = [item["content"]["title"] for item in news_items]
     news_text = "\n".join(headlines)
 
