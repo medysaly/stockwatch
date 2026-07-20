@@ -31,3 +31,6 @@ resource "aws_secretsmanager_secret_version" "stockwatch_secrets_version" {
   })
 }
 
+resource "aws_ecr_repository" "stockwatch" {
+  name = "stockwatch"
+}
