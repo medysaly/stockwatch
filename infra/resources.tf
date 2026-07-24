@@ -62,3 +62,13 @@ resource "aws_iam_role_policy" "lambda_secrets_access" {
     ]
   })
 }
+
+
+resource "aws_lambda_function" "stockwatch" {
+  function_name = "stockwatch"
+  role          = aws_iam_role.lambda_execution_role.arn
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.stockwatch.repository_url}:latest"
+  timeout       = 30
+  memory_size   = 256
+}
