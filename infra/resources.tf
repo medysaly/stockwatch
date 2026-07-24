@@ -39,3 +39,26 @@ resource "aws_iam_role" "lambda_execution_role" {
     ]
   })
 }
+
+# Grants permission to write logs to CloudWatch — required for the print()-based logging to be visible after deployment.
+resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
+  role       = aws_iam_role.lambda_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# Grants permission to read this specific secret, not every secret in the account.
+resource "aws_iam_role_policy" "lambda_secrets_access" {
+  name = "stockwatch-lambda-secrets-access"
+  role = aws_iam_role.lambda_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = "secretsmanager:GetSecretValue"
+        Effect   = "Allow"
+        Resource = aws_secretsmanager_secret.stockwatch_secrets.arn
+      }
+    ]
+  })
+}
