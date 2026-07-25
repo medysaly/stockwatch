@@ -71,4 +71,5 @@ resource "aws_lambda_function" "stockwatch" {
   image_uri     = "${aws_ecr_repository.stockwatch.repository_url}:latest"
   timeout       = 30
   memory_size   = 256
+  architectures = ["arm64"]
 }

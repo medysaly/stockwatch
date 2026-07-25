@@ -1,10 +1,21 @@
-FROM python:3.11-slim
+FROM ghcr.io/astral-sh/uv:0.11.32 AS uv
 
-WORKDIR /app
+FROM public.ecr.aws/lambda/python:3.12-arm64 AS builder
 
-COPY pyproject.toml uv.lock ./
-RUN pip install uv && uv sync --frozen --no-dev
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_NO_INSTALLER_METADATA=1
+ENV UV_LINK_MODE=copy
 
-COPY . .
+RUN --mount=from=uv,source=/uv,target=/bin/uv \
+    --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv export --frozen --no-dev --no-editable -o requirements.txt && \
+    uv pip install -r requirements.txt --target "${LAMBDA_TASK_ROOT}" --only-binary=:all:
 
-CMD ["uv", "run", "python", "main.py"]
+FROM public.ecr.aws/lambda/python:3.12-arm64
+
+COPY --from=builder ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}
+COPY main.py ${LAMBDA_TASK_ROOT}
+
+CMD ["main.handler"]

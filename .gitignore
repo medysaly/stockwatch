@@ -8,4 +8,5 @@ screenshots/
 terraform.tfstate
 terraform.tfstate.backup
 *.tfvars
+response.json
 
