@@ -3,8 +3,22 @@ from dotenv import load_dotenv
 import time
 import json
 import yfinance as yf
+import boto3
+import os
+
 
 load_dotenv()
+
+
+def get_api_key() -> str:
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if api_key:
+        return api_key
+
+    client = boto3.client("secretsmanager", region_name="us-east-1")
+    response = client.get_secret_value(SecretId="stockwatch/api-keys")
+    secret = json.loads(response["SecretString"])
+    return secret["ANTHROPIC_API_KEY"]
 
 
 def get_stock_data(ticker: str) -> str:
@@ -28,7 +42,7 @@ def summarize_market(prompt: str, model: str = "claude-sonnet-5") -> str:
     """
     Sends a text prompt to the Anthropic Messages API and returns the response.
     """
-    client = Anthropic()
+    client = Anthropic(api_key=get_api_key())
 
     start_time = time.time()
 
@@ -54,6 +68,11 @@ def summarize_market(prompt: str, model: str = "claude-sonnet-5") -> str:
     print(json.dumps(log_entry))
 
     return summary
+
+def handler(event, context):
+    ticker = event.get("ticker", "AAPL") if event else "AAPL"
+    return {"summary": summarize_market(get_stock_data(ticker))}
+
 
 
 if __name__ == "__main__":
