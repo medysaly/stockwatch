@@ -73,3 +73,24 @@ resource "aws_lambda_function" "stockwatch" {
   memory_size   = 256
   architectures = ["arm64"]
 }
+
+resource "aws_cloudwatch_event_rule" "stockwatch_daily" {
+  name                = "stockwatch-daily-trigger"
+  schedule_expression = "rate(1 day)"
+}
+
+resource "aws_cloudwatch_event_target" "stockwatch_lambda_target" {
+  rule = aws_cloudwatch_event_rule.stockwatch_daily.name
+  arn  = aws_lambda_function.stockwatch.arn
+  input = jsonencode({
+    ticker = "AAPL"
+  })
+}
+
+resource "aws_lambda_permission" "allow_eventbridge" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.stockwatch.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.stockwatch_daily.arn
+}
