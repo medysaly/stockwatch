@@ -26,3 +26,6 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: uv run pytest
+ 
+      - name: Build Docker image
+        run: docker build --provenance=false -t stockwatch .
