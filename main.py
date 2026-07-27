@@ -1,11 +1,11 @@
+import json
+import os
+import time
+
+import boto3
+import yfinance as yf
 from anthropic import Anthropic
 from dotenv import load_dotenv
-import time
-import json
-import yfinance as yf
-import boto3
-import os
-
 
 load_dotenv()
 
