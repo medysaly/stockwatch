@@ -1,5 +1,7 @@
 # stockwatch
 
+[![CI](https://github.com/medysaly/stockwatch/actions/workflows/ci.yml/badge.svg)](https://github.com/medysaly/stockwatch/actions/workflows/ci.yml)
+
 An AI-powered stock market companion that fetches real price and news data, summarizes it with Claude, and runs automatically in AWS on a daily schedule.
 
 This is a **learning project**, not a polished product — it's the vehicle for hands-on practice with AI engineering, AWS, Docker, and Terraform, built by someone studying toward an AI/ML engineering role. Every architectural choice here was made twice: once for the app, once for the lesson. That framing is intentional and stays in this README rather than being hidden — the discipline of building something real, debugging it end to end, and documenting the actual cost/architecture tradeoffs is the point.
@@ -42,6 +44,21 @@ Everything above is provisioned as code via Terraform (`infra/`) — nothing was
 | **Terraform** (not CDK/SAM) | Chosen deliberately over AWS-native IaC tools — appears in significantly more job postings, and the whole point of this repo is building marketable skills, not just working code. |
 | **Secrets Manager** (not `.env` in prod) | `.env` + `python-dotenv` locally for fast iteration; Secrets Manager once deployed, since there's no `.env` file inside a Lambda container. |
 
+## CI/CD
+
+Every push runs an automated pipeline via GitHub Actions:
+
+1. **Lint** — `ruff`
+2. **Test** — `pytest`, including evals that call the real Claude API
+3. **Build** — the Lambda container image, cross-compiled for `arm64` via QEMU (GitHub's runners are `x86_64`, this project's Lambda is `arm64`)
+4. **`terraform plan`** — a live, read-only comparison against real AWS state
+
+`terraform apply` stays manual and deliberate — it's the one step that actually changes real infrastructure and costs money, so it's never automated.
+
+**No stored AWS credentials.** The `terraform plan` step authenticates via OIDC: GitHub proves its identity to AWS per-request with a short-lived token, instead of a long-lived access key sitting in a GitHub secret.
+
+`main` is protected — a pull request and a passing CI run are both required before anything can merge.
+
 ## Cost
 
 Real AWS money is on the line here, so cost discipline is a deliberate practice, not an afterthought. Steady-state monthly cost, running the current pipeline continuously:
@@ -53,7 +70,7 @@ Real AWS money is on the line here, so cost discipline is a deliberate practice,
 | Secrets Manager | ~$0.40/mo flat (one bundled JSON secret — Secrets Manager bills per secret, not per value inside it, so every API key this project ever needs lives in that one secret) |
 | Claude API calls | Low single-digit dollars/month at this call frequency |
 
-**Total: roughly $1–5/month.** The only components of this project that could get genuinely expensive — SageMaker real-time endpoints, an EKS cluster — haven't been built yet, and won't run except in short, deliberately torn-down sessions when they are (see `CLAUDE.md` for the full cost-management ruleset this project follows).
+**Total: roughly $1–5/month.** The only components of this project that could get genuinely expensive — SageMaker real-time endpoints, an EKS cluster — haven't been built yet, and won't run except in short, deliberately torn-down sessions when they are.
 
 ## Running it locally
 
@@ -82,10 +99,10 @@ docker run --env-file .env stockwatch
 
 ## Status
 
-**Done:** local summarization pipeline (real data + Claude + evals + structured logging), full AWS deployment (S3, Secrets Manager, ECR, IAM, Lambda, EventBridge), all provisioned via Terraform and verified working end to end in production.
+**Done:** local summarization pipeline (real data + Claude + evals + structured logging); full AWS deployment (S3, Secrets Manager, ECR, IAM, Lambda, EventBridge) via Terraform, verified working end to end in production; a complete CI/CD pipeline (lint, test, Docker build, `terraform plan`) using OIDC-based AWS authentication with no stored credentials, enforced via branch protection on `main`.
 
-**Not yet:** CI/CD (GitHub Actions), a Kubernetes side-module (self-hosting an open-source LLM on EKS, kept deliberately separate from this main app), an MCP server exposing stockwatch's signals to other tools, and moving beyond a single hardcoded ticker to a real watchlist.
+**Not yet:** a Kubernetes side-module (self-hosting an open-source LLM on EKS, kept deliberately separate from this main app), an MCP server exposing stockwatch's signals to other tools, and moving beyond a single hardcoded ticker to a real watchlist.
 
 ## Known limitations
 
-- `get_stock_data` isn't defensive against malformed `yfinance` responses — a news item missing its `"content"` or `"title"` key will raise a `KeyError`. `yfinance` is an unofficial API wrapper (not a supported Yahoo product), and this is a known, deliberately deferred gap. See `CLAUDE.md` for the full list of tracked tech debt.
+- `get_stock_data` isn't defensive against malformed `yfinance` responses — a news item missing its `"content"` or `"title"` key will raise a `KeyError`. `yfinance` is an unofficial API wrapper (not a supported Yahoo product), and this is a known, deliberately deferred gap.
