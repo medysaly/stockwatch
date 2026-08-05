@@ -117,7 +117,8 @@ resource "aws_iam_role" "github_actions_terraform" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:medysaly/stockwatch:*"
+            "token.actions.githubusercontent.com:sub" = "repo:medysaly@187324769/stockwatch@1304130972:*"
+
           }
         }
       }
